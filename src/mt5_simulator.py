@@ -155,16 +155,18 @@ class MT5Simulator:
             low_price = open_price - random.uniform(0, 0.005)
             close_price = open_price + random.uniform(-0.003, 0.003)
             
-            rates.append({
-                'time': timestamp,
-                'open': round(open_price, 5),
-                'high': round(high_price, 5),
-                'low': round(low_price, 5),
-                'close': round(close_price, 5),
-                'tick_volume': random.randint(100, 1000),
-                'spread': int(self.spread * 100000),
-                'real_volume': 0
-            })
+            # Crear tupla en lugar de diccionario para numpy
+            rate_tuple = (
+                timestamp,
+                round(open_price, 5),
+                round(high_price, 5),
+                round(low_price, 5),
+                round(close_price, 5),
+                random.randint(100, 1000),
+                int(self.spread * 100000),
+                0
+            )
+            rates.append(rate_tuple)
         
         return np.array(rates, dtype=[
             ('time', 'i8'), ('open', 'f8'), ('high', 'f8'), 

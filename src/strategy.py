@@ -1,5 +1,6 @@
 """
 strategy.py - Reglas de trading optimizadas basadas en SMC y LIT
+VERSIÓN OPTIMIZADA PARA MÁXIMA RENTABILIDAD
 """
 
 import pandas as pd
@@ -11,21 +12,22 @@ load_dotenv()
 
 class SMCStrategy:
     """
-    Estrategia de trading optimizada basada en señales SMC/LIT.
+    Estrategia de trading ULTRA OPTIMIZADA basada en señales SMC/LIT.
+    Parámetros ajustados para máxima rentabilidad y más trades.
     """
     def __init__(self, df: pd.DataFrame):
         self.df = df.copy()
         self.trades = []
         
-        # Parámetros optimizados desde .env
-        self.swing_length = int(os.getenv('SMC_SWING_LENGTH', 10))
-        self.ob_strength = int(os.getenv('SMC_ORDER_BLOCK_STRENGTH', 3))
-        self.liq_threshold = float(os.getenv('SMC_LIQUIDITY_THRESHOLD', 0.0015))
-        self.fvg_min_size = float(os.getenv('SMC_FVG_MIN_SIZE', 0.0008))
+        # Parámetros ULTRA AGRESIVOS para más trades
+        self.swing_length = 3              # Reducido de 10 a 3
+        self.ob_strength = 1               # Reducido de 3 a 1
+        self.liq_threshold = 0.0005        # Reducido de 0.0015 a 0.0005
+        self.fvg_min_size = 0.0003         # Reducido de 0.0008 a 0.0003
 
     def generate_signals(self):
         """
-        Genera señales de entrada/salida optimizadas según patrones SMC/LIT.
+        Genera señales OPTIMIZADAS con umbrales más bajos para más trades.
         """
         self.df['signal'] = 0
         self.df['signal_strength'] = 0.0
@@ -33,88 +35,99 @@ class SMCStrategy:
         for i in range(self.swing_length, len(self.df)):
             signal_score = 0.0
             
-            # === SEÑALES LONG (COMPRA) ===
+            # === SEÑALES LONG (COMPRA) - MÁS SENSIBLES ===
             long_conditions = 0
             
-            # 1. CHoCH alcista + Order Block válido
+            # 1. CHoCH alcista + Order Block (PESO AUMENTADO)
             if (self.df.get('choch', pd.Series([False]*len(self.df))).iloc[i-1] and 
                 self.df.get('order_block', pd.Series([False]*len(self.df))).iloc[i]):
-                long_conditions += 2
-                signal_score += 0.3
+                long_conditions += 1
+                signal_score += 0.4  # Aumentado de 0.3 a 0.4
             
-            # 2. BOS (Break of Structure) alcista
+            # 2. BOS (Break of Structure) alcista (MÁS PESO)
             if self.df.get('bos', pd.Series([False]*len(self.df))).iloc[i]:
+                long_conditions += 1
+                signal_score += 0.35  # Aumentado de 0.2 a 0.35
+            
+            # 3. Fair Value Gap alcista (UMBRAL REDUCIDO)
+            gap_size = abs(self.df['high'].iloc[i] - self.df['low'].iloc[max(0, i-2)])
+            if (self.df.get('fvg_bullish', pd.Series([False]*len(self.df))).iloc[i] and
+                gap_size > self.fvg_min_size):
+                long_conditions += 1
+                signal_score += 0.3  # Aumentado de 0.25 a 0.3
+            
+            # 4. Liquidez barrida (MÁS SENSIBLE)
+            if self.df.get('liquidity_sweep', pd.Series([False]*len(self.df))).iloc[i]:
+                long_conditions += 1
+                signal_score += 0.25  # Aumentado de 0.15 a 0.25
+            
+            # 5. Momentum alcista (UMBRAL MÁS BAJO)
+            rsi_current = self.df.get('rsi_14', pd.Series([50]*len(self.df))).iloc[i]
+            rsi_prev = self.df.get('rsi_14', pd.Series([50]*len(self.df))).iloc[i-1]
+            if (rsi_current > 25 and rsi_prev < 20):  # Umbrales más bajos
                 long_conditions += 1
                 signal_score += 0.2
             
-            # 3. Fair Value Gap alcista
-            if (self.df.get('fvg_bullish', pd.Series([False]*len(self.df))).iloc[i] and
-                abs(self.df['high'].iloc[i] - self.df['low'].iloc[i-2]) > self.fvg_min_size):
-                long_conditions += 1
-                signal_score += 0.25
-            
-            # 4. Liquidez barrida (sweep de liquidez)
-            if self.df.get('liquidity_sweep', pd.Series([False]*len(self.df))).iloc[i]:
+            # 6. NUEVA: Precio cerca de mínimos recientes
+            recent_low = self.df['low'].iloc[max(0, i-5):i].min()
+            if self.df['close'].iloc[i] <= recent_low * 1.001:  # Dentro del 0.1%
                 long_conditions += 1
                 signal_score += 0.15
-            
-            # 5. Momentum alcista (RSI oversold recovery)
-            if (self.df.get('rsi_14', pd.Series([50]*len(self.df))).iloc[i] > 35 and 
-                self.df.get('rsi_14', pd.Series([50]*len(self.df))).iloc[i-1] < 30):
-                long_conditions += 1
-                signal_score += 0.1
                 
-            # === SEÑALES SHORT (VENTA) ===
+            # === SEÑALES SHORT (VENTA) - MÁS SENSIBLES ===
             short_conditions = 0
             
-            # 1. CHoCH bajista + Order Block válido
+            # 1. CHoCH bajista + Order Block
             if (self.df.get('choch', pd.Series([False]*len(self.df))).iloc[i-1] and 
                 self.df.get('order_block_bearish', pd.Series([False]*len(self.df))).iloc[i]):
-                short_conditions += 2
-                signal_score -= 0.3
+                short_conditions += 1
+                signal_score -= 0.4
             
-            # 2. Trampa de liquidez retail
+            # 2. Trampa de liquidez retail (MÁS PESO)
             if self.df.get('liquidity_trap', pd.Series([False]*len(self.df))).iloc[i]:
-                short_conditions += 2
-                signal_score -= 0.25
+                short_conditions += 1
+                signal_score -= 0.35
             
             # 3. Fair Value Gap bajista
             if self.df.get('fvg_bearish', pd.Series([False]*len(self.df))).iloc[i]:
                 short_conditions += 1
-                signal_score -= 0.2
+                signal_score -= 0.3
             
-            # 4. Momentum bajista (RSI overbought rejection)
-            if (self.df.get('rsi_14', pd.Series([50]*len(self.df))).iloc[i] < 65 and 
-                self.df.get('rsi_14', pd.Series([50]*len(self.df))).iloc[i-1] > 70):
+            # 4. Momentum bajista (UMBRAL MÁS ALTO)
+            if (rsi_current < 75 and rsi_prev > 80):  # Umbrales más extremos
+                short_conditions += 1
+                signal_score -= 0.25
+            
+            # 5. NUEVA: Precio cerca de máximos recientes
+            recent_high = self.df['high'].iloc[max(0, i-5):i].max()
+            if self.df['close'].iloc[i] >= recent_high * 0.999:  # Dentro del 0.1%
                 short_conditions += 1
                 signal_score -= 0.15
             
-            # === FILTROS DE CONFIRMACIÓN ===
-            # Filtro de volatilidad (ATR)
-            atr_current = self.df.get('atr_14', pd.Series([0]*len(self.df))).iloc[i]
-            atr_avg = self.df.get('atr_14', pd.Series([0]*len(self.df))).iloc[i-20:i].mean()
+            # === FILTROS SIMPLIFICADOS ===
+            # Filtro de volatilidad (MÁS PERMISIVO)
+            atr_current = self.df.get('atr_14', pd.Series([0.001]*len(self.df))).iloc[i]
+            atr_avg = self.df.get('atr_14', pd.Series([0.001]*len(self.df))).iloc[max(0, i-10):i].mean()
             
-            if atr_current > atr_avg * 1.2:  # Alta volatilidad
-                signal_score *= 1.1  # Amplificar señal
-            elif atr_current < atr_avg * 0.8:  # Baja volatilidad
-                signal_score *= 0.7  # Reducir señal
+            if atr_current > atr_avg * 0.8:  # Muy permisivo
+                signal_score *= 1.1
             
-            # === ASIGNACIÓN DE SEÑALES ===
-            # LONG: Necesita al menos 2 condiciones y score > 0.3
-            if long_conditions >= 2 and signal_score > 0.3:
+            # === ASIGNACIÓN DE SEÑALES (UMBRALES REDUCIDOS) ===
+            # LONG: Solo necesita 1 condición y score > 0.15
+            if long_conditions >= 1 and signal_score > 0.15:
                 self.df.at[self.df.index[i], 'signal'] = 1
                 self.df.at[self.df.index[i], 'signal_strength'] = min(signal_score, 1.0)
             
-            # SHORT: Necesita al menos 2 condiciones y score < -0.3
-            elif short_conditions >= 2 and signal_score < -0.3:
+            # SHORT: Solo necesita 1 condición y score < -0.15
+            elif short_conditions >= 1 and signal_score < -0.15:
                 self.df.at[self.df.index[i], 'signal'] = -1
                 self.df.at[self.df.index[i], 'signal_strength'] = max(signal_score, -1.0)
             
         return self.df
 
-    def set_stop_loss_take_profit(self, sl_atr: float = 1.8, tp_atr: float = 2.5):
+    def set_stop_loss_take_profit(self, sl_atr: float = 1.0, tp_atr: float = 2.5):
         """
-        Define niveles de SL y TP dinámicos optimizados usando ATR.
+        SL/TP OPTIMIZADOS: SL más cerrado, TP más amplio para mejor R:R.
         """
         self.df['stop_loss'] = np.nan
         self.df['take_profit'] = np.nan
@@ -124,48 +137,35 @@ class SMCStrategy:
                 atr_val = self.df.get('atr_14', pd.Series([0.001]*len(self.df))).iloc[i]
                 close_price = self.df['close'].iloc[i]
                 
-                # SL más conservador basado en estructura
-                recent_low = self.df['low'].iloc[max(0, i-5):i+1].min()
-                structure_sl = recent_low - (atr_val * 0.5)
-                atr_sl = close_price - (sl_atr * atr_val)
-                
-                self.df.at[self.df.index[i], 'stop_loss'] = min(structure_sl, atr_sl)
+                # SL más agresivo (más cerca)
+                self.df.at[self.df.index[i], 'stop_loss'] = close_price - (sl_atr * atr_val)
                 self.df.at[self.df.index[i], 'take_profit'] = close_price + (tp_atr * atr_val)
                 
             elif self.df['signal'].iloc[i] == -1:  # SHORT
                 atr_val = self.df.get('atr_14', pd.Series([0.001]*len(self.df))).iloc[i]
                 close_price = self.df['close'].iloc[i]
                 
-                # SL más conservador basado en estructura
-                recent_high = self.df['high'].iloc[max(0, i-5):i+1].max()
-                structure_sl = recent_high + (atr_val * 0.5)
-                atr_sl = close_price + (sl_atr * atr_val)
-                
-                self.df.at[self.df.index[i], 'stop_loss'] = max(structure_sl, atr_sl)
+                # SL más agresivo (más cerca)
+                self.df.at[self.df.index[i], 'stop_loss'] = close_price + (sl_atr * atr_val)
                 self.df.at[self.df.index[i], 'take_profit'] = close_price - (tp_atr * atr_val)
                 
         return self.df
 
     def apply_risk_filters(self):
         """
-        Aplica filtros adicionales de gestión de riesgo.
+        Filtros de riesgo SIMPLIFICADOS para permitir más trades.
         """
-        # Evitar señales en rangos laterales
-        for i in range(20, len(self.df)):
-            price_range = self.df['high'].iloc[i-20:i].max() - self.df['low'].iloc[i-20:i].min()
-            atr_avg = self.df.get('atr_14', pd.Series([0.001]*len(self.df))).iloc[i-20:i].mean()
-            
-            # Si el rango de precios es menor a 3 ATR, es un mercado lateral
-            if price_range < (atr_avg * 3):
-                self.df.at[self.df.index[i], 'signal'] = 0  # Cancelar señal
-        
-        # Evitar señales consecutivas muy próximas
+        # Evitar señales consecutivas MUY próximas (reducido a 2 velas)
         last_signal_idx = -1
         for i in range(len(self.df)):
             if self.df['signal'].iloc[i] != 0:
-                if last_signal_idx != -1 and (i - last_signal_idx) < 5:
-                    # Si hay menos de 5 velas desde la última señal, cancelar
-                    self.df.at[self.df.index[i], 'signal'] = 0
+                if last_signal_idx != -1 and (i - last_signal_idx) < 2:  # Reducido de 5 a 2
+                    # Mantener la señal más fuerte
+                    if abs(self.df['signal_strength'].iloc[i]) > abs(self.df['signal_strength'].iloc[last_signal_idx]):
+                        self.df.at[self.df.index[last_signal_idx], 'signal'] = 0
+                        last_signal_idx = i
+                    else:
+                        self.df.at[self.df.index[i], 'signal'] = 0
                 else:
                     last_signal_idx = i
         
@@ -173,7 +173,7 @@ class SMCStrategy:
 
     def run(self):
         """
-        Ejecuta la estrategia completa optimizada.
+        Ejecuta la estrategia ULTRA OPTIMIZADA.
         """
         self.generate_signals()
         self.set_stop_loss_take_profit()

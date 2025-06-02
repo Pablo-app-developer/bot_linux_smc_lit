@@ -114,37 +114,59 @@ class MT5Trader:
         Returns:
             tuple: (df_raw, df_features, signals)
         """
-        # Obtener datos OHLC
-        df = self.connector.fetch_ohlc_data(
-            symbol=self.symbol,
-            timeframe=self.timeframe,
-            num_candles=self.candles_count
-        )
-        
-        if df is None or len(df) < 100:
-            logger.error("No se pudieron obtener suficientes datos para análisis")
-            return None, None, None
-        
-        # Extraer features SMC-LIT
-        features_extractor = SMCFeatureExtractor(df)
-        df_features = features_extractor.extract_all()
-        
-        # Generar señales basadas en estrategia
-        strategy = SMCStrategy(df_features)
-        df_signals = strategy.run()
-        
-        # Aplicar filtro de IA si está habilitado
-        if self.use_ai and self.model:
-            agent = SMCAgent(self.model, df_features)
-            ai_df = agent.act()
-            df_signals['ai_signal'] = ai_df['ai_signal']
+        try:
+            logger.debug("Iniciando get_latest_data...")
             
-            # Combinación: usar señal SMC solo si IA la confirma
-            df_signals['final_signal'] = df_signals['signal'] * (df_signals['ai_signal'] > 0).astype(int)
-        else:
-            df_signals['final_signal'] = df_signals['signal']
-        
-        return df, df_features, df_signals
+            # Obtener datos OHLC
+            logger.debug("Obteniendo datos OHLC...")
+            df = self.connector.fetch_ohlc_data(
+                symbol=self.symbol,
+                timeframe=self.timeframe,
+                num_candles=self.candles_count
+            )
+            
+            if df is None or len(df) < 100:
+                logger.error("No se pudieron obtener suficientes datos para análisis")
+                return None, None, None
+            
+            logger.debug(f"Datos OHLC obtenidos: {len(df)} filas")
+            logger.debug(f"Columnas en df: {list(df.columns)}")
+            
+            # Extraer features SMC-LIT
+            logger.debug("Extrayendo features SMC-LIT...")
+            features_extractor = SMCFeatureExtractor(df)
+            df_features = features_extractor.extract_all()
+            
+            logger.debug(f"Features SMC extraídas: {list(df_features.columns)}")
+            
+            # Generar señales basadas en estrategia
+            logger.debug("Generando señales de estrategia...")
+            strategy = SMCStrategy(df_features)
+            df_signals = strategy.run()
+            
+            logger.debug(f"Señales generadas: {list(df_signals.columns)}")
+            
+            # Aplicar filtro de IA si está habilitado
+            if self.use_ai and self.model:
+                logger.debug("Aplicando filtro de IA...")
+                agent = SMCAgent(self.model, df_features)
+                ai_df = agent.act()
+                df_signals['ai_signal'] = ai_df['ai_signal']
+                
+                # Combinación: usar señal SMC solo si IA la confirma
+                df_signals['final_signal'] = df_signals['signal'] * (df_signals['ai_signal'] > 0).astype(int)
+            else:
+                logger.debug("Sin filtro de IA, usando señales SMC directas")
+                df_signals['final_signal'] = df_signals['signal']
+            
+            logger.debug("get_latest_data completado exitosamente")
+            return df, df_features, df_signals
+            
+        except Exception as e:
+            logger.error(f"Error en get_latest_data: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return None, None, None
     
     def process_signals(self, df_signals):
         """
@@ -159,6 +181,10 @@ class MT5Trader:
         # Obtener última vela con señal
         latest_candle = df_signals.iloc[-1]
         latest_signal = latest_candle['final_signal']
+        
+        # DEBUG: Imprimir tipo y valor de latest_candle
+        logger.debug(f"latest_candle type: {type(latest_candle)}")
+        logger.debug(f"latest_candle columns: {list(latest_candle.index) if hasattr(latest_candle, 'index') else 'No index'}")
         
         # Registrar señal
         self.signals_history.append({
@@ -203,20 +229,40 @@ class MT5Trader:
         
         # Calcular stop loss en puntos
         try:
+            # DEBUG: Imprimir cada valor antes de la conversión
+            logger.debug(f"latest_candle['close']: {latest_candle['close']} (type: {type(latest_candle['close'])})")
+            logger.debug(f"latest_candle['low']: {latest_candle['low']} (type: {type(latest_candle['low'])})")
+            logger.debug(f"latest_candle['high']: {latest_candle['high']} (type: {type(latest_candle['high'])})")
+            logger.debug(f"latest_candle['atr_14']: {latest_candle['atr_14']} (type: {type(latest_candle['atr_14'])})")
+            
             close_price = float(latest_candle['close'])
             low_price = float(latest_candle['low']) 
             high_price = float(latest_candle['high'])
             atr_value = float(latest_candle['atr_14'])
+            
+            logger.debug(f"Converted values - close: {close_price}, low: {low_price}, high: {high_price}, atr: {atr_value}")
+            
         except (TypeError, ValueError, KeyError) as e:
             logger.error(f"Error obteniendo precios para SL/TP: {e}")
+            logger.error(f"Detalles del error en latest_candle: {latest_candle}")
             return
             
         if latest_signal > 0:  # Compra
             sl_price = low_price - atr_value * 1.5
-            sl_points = max(int(abs(close_price - sl_price) * 100000), 50)  # Convertir a puntos
+            try:
+                sl_points = max(int(abs(close_price - sl_price) * 100000), 50)  # Convertir a puntos
+                logger.debug(f"BUY sl_points calculation: abs({close_price} - {sl_price}) * 100000 = {sl_points}")
+            except Exception as e:
+                logger.error(f"Error calculando sl_points para BUY: {e}")
+                return
         else:  # Venta
             sl_price = high_price + atr_value * 1.5
-            sl_points = max(int(abs(sl_price - close_price) * 100000), 50)  # Convertir a puntos
+            try:
+                sl_points = max(int(abs(sl_price - close_price) * 100000), 50)  # Convertir a puntos
+                logger.debug(f"SELL sl_points calculation: abs({sl_price} - {close_price}) * 100000 = {sl_points}")
+            except Exception as e:
+                logger.error(f"Error calculando sl_points para SELL: {e}")
+                return
         
         # Calcular TP en puntos (2:1 risk:reward por defecto)
         tp_points = sl_points * 2

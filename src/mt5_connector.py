@@ -213,7 +213,7 @@ class MT5Connector:
     
     def fetch_ohlc_data(self, symbol=None, timeframe=None, num_candles=1000, start_date=None, end_date=None):
         """
-        Descarga datos OHLC históricos.
+        Descarga datos OHLC históricos y agrega indicadores técnicos.
         
         Args:
             symbol: Símbolo (str)
@@ -223,7 +223,7 @@ class MT5Connector:
             end_date: Fecha fin (datetime)
             
         Returns:
-            pd.DataFrame: Datos OHLC
+            pd.DataFrame: Datos OHLC con indicadores técnicos
         """
         if not self.reconnect_if_needed():
             return None
@@ -275,8 +275,64 @@ class MT5Connector:
         # Añadir símbolo
         df['symbol'] = symbol
         
-        logger.info(f"Descargadas {len(df)} velas de {symbol} {self.timeframe_str}")
+        # Agregar indicadores técnicos necesarios
+        try:
+            # Importar y usar la función prepare_for_analysis
+            import sys
+            import os
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            if current_dir not in sys.path:
+                sys.path.append(current_dir)
+            
+            from fetch_data import MarketDataFetcher
+            fetcher = MarketDataFetcher()
+            df = fetcher.prepare_for_analysis(df)
+            
+            # Agregar indicadores adicionales necesarios para SMC
+            # RSI
+            df['rsi_14'] = self._calculate_rsi(df['close'], 14)
+            
+            # EMA corto y largo para filtros de tendencia
+            df['ema_9'] = df['close'].ewm(span=9).mean()
+            df['ema_21'] = df['close'].ewm(span=21).mean()
+            
+        except Exception as e:
+            logger.warning(f"Error agregando indicadores técnicos: {e}")
+            # Agregar ATR básico manualmente como fallback
+            if 'atr_14' not in df.columns:
+                df['tr'] = np.maximum(
+                    df['high'] - df['low'],
+                    np.maximum(
+                        abs(df['high'] - df['close'].shift(1)),
+                        abs(df['low'] - df['close'].shift(1))
+                    )
+                )
+                df['atr_14'] = df['tr'].rolling(window=14).mean()
+            
+            # RSI básico
+            if 'rsi_14' not in df.columns:
+                df['rsi_14'] = self._calculate_rsi(df['close'], 14)
+        
+        logger.info(f"Descargadas {len(df)} velas de {symbol} {self.timeframe_str} con indicadores técnicos")
         return df
+    
+    def _calculate_rsi(self, prices, period=14):
+        """
+        Calcula el RSI (Relative Strength Index).
+        
+        Args:
+            prices: Serie de precios
+            period: Periodo para el cálculo
+            
+        Returns:
+            Serie con valores RSI
+        """
+        delta = prices.diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+        return rsi
     
     def calculate_lot_size(self, risk_percent, sl_points, symbol=None):
         """

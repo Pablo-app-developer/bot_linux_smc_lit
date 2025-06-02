@@ -221,7 +221,7 @@ class DeepReinforcementLearningAgent:
         
         # Combinar tudo em um estado
         state = np.concatenate([
-            normalized_prices[-5:],  # Últimos 5 preços
+            normalized_prices[-5:],  # Últimos 5 precios
             [rsi / 100.0, atr * 1000],  # Indicadores normalizados
             param_values  # Parâmetros atuais
         ])
@@ -297,9 +297,9 @@ class DeepReinforcementLearningAgent:
             base_reward -= (2.0 - profit_factor) * 10
         
         # 3. Total P&L (peso 20% - ganho absoluto)
-        pnl_percentage = (total_pnl / 10000) * 100  # Porcentagem do capital
+        pnl_percentage = (total_pnl / 10000) * 100  # Porcentaje del capital
         if pnl_percentage > 0:
-            base_reward += min(pnl_percentage * 2, 20.0)  # Max 20 pontos
+            base_reward += min(pnl_percentage * 2, 20.0)  # Max 20 puntos
         else:
             base_reward += pnl_percentage * 5  # Penalidade por perda
         

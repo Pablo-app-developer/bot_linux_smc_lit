@@ -174,17 +174,14 @@ WantedBy=multi-user.target
         """Crear script para respuesta automática"""
         print("\n🤖 CONFIGURANDO RESPUESTA AUTOMÁTICA...")
         
-        auto_script = f"""#!/bin/bash
-# Auto-respuesta para bot SMC-LIT v2.0
-cd {self.vps_path}
-echo "mantener" | {self.vps_path}/.venv/bin/python {self.vps_path}/main_advanced_with_indices.py
-"""
+        # Script principal con respuesta automática
+        cmd = f'cd {self.vps_path} && echo "1" | {self.vps_path}/.venv/bin/python {self.vps_path}/main_advanced_with_indices.py'
         
         script_path = os.path.join(self.vps_path, 'start_auto.sh')
         
         try:
             with open(script_path, 'w') as f:
-                f.write(auto_script)
+                f.write(cmd)
             
             os.chmod(script_path, 0o755)
             print("✅ Script de auto-respuesta creado")

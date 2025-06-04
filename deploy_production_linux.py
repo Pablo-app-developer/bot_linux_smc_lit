@@ -256,7 +256,7 @@ source {self.production_dir}/.venv/bin/activate
 
 # Ejecutar con respuesta automática (simulador por defecto en Linux)
 echo "Iniciando Bot SMC-LIT v2.0 en modo automático Linux..."
-echo "mantener" | python3 {self.production_dir}/main_advanced_with_indices.py 2>&1 | tee -a {self.production_dir}/logs/bot.log
+echo "1" | python3 {self.production_dir}/main_advanced_with_indices.py 2>&1 | tee -a {self.production_dir}/logs/bot.log
 
 # Si falla el principal, intentar con start_auto_mode.py
 if [ $? -ne 0 ]; then

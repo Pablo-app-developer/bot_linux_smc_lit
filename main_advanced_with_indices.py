@@ -13,6 +13,7 @@ import os
 import threading
 from datetime import datetime, timedelta
 import random
+import select
 
 try:
     from twitter_news_analyzer import AdvancedTwitterNewsAnalyzer, TwitterNewsAnalyzer
@@ -74,8 +75,8 @@ class AdvancedTradingBotWithIndices:
         print("🚀" + "=" * 78 + "🚀")
     
     def preguntar_modo_operacion(self):
-        """Preguntar al usuario sobre el modo de operación"""
-        print("\n🤖 CONFIGURACIÓN DEL MODO DE OPERACIÓN")
+        """Preguntar si usar modo automático o manual con timeout"""
+        print("\n🤖 CONFIGURACIÓN DE MODO DE OPERACIÓN")
         print("=" * 50)
         print("📊 MODO AUTOMÁTICO está configurado por defecto")
         print("🧠 El bot seleccionará automáticamente:")
@@ -84,18 +85,76 @@ class AdvancedTradingBotWithIndices:
         print("  • Parámetros de riesgo inteligentes")
         print("  • Análisis de noticias Twitter integrado")
         print("=" * 50)
+        print()
+        print("🎯 SELECCIONA MODO DE OPERACIÓN:")
+        print("  1️⃣  AUTOMÁTICO (Recomendado) - Sin intervención")
+        print("  2️⃣  MANUAL - Configuración personalizada")
+        print()
+        print("⏰ El sistema elegirá AUTOMÁTICO en 10 segundos si no hay respuesta...")
+        
+        # Función para input con timeout
+        def input_with_timeout(prompt, timeout=10):
+            print(prompt, end='', flush=True)
+            
+            # En Windows, usar un método alternativo
+            if sys.platform == 'win32':
+                import msvcrt
+                start_time = time.time()
+                input_chars = []
+                
+                while True:
+                    if time.time() - start_time > timeout:
+                        print()  # Nueva línea
+                        return None  # Timeout
+                    
+                    if msvcrt.kbhit():
+                        char = msvcrt.getch()
+                        if char == b'\r':  # Enter
+                            print()  # Nueva línea
+                            return ''.join(input_chars)
+                        elif char == b'\x08':  # Backspace
+                            if input_chars:
+                                input_chars.pop()
+                                print('\b \b', end='', flush=True)
+                        else:
+                            try:
+                                decoded_char = char.decode('utf-8')
+                                input_chars.append(decoded_char)
+                                print(decoded_char, end='', flush=True)
+                            except:
+                                pass
+                    
+                    time.sleep(0.01)  # Pequeña pausa para no saturar CPU
+            
+            else:
+                # En Linux/Unix usar select
+                ready, _, _ = select.select([sys.stdin], [], [], timeout)
+                if ready:
+                    return sys.stdin.readline().strip()
+                else:
+                    print()  # Nueva línea después del timeout
+                    return None  # Timeout
         
         while True:
-            respuesta = input("¿Deseas MANTENER el modo automático o CAMBIARLO? (mantener/cambiar): ").lower().strip()
+            respuesta = input_with_timeout("Elige opción (1=Automático, 2=Manual): ", timeout=10)
             
-            if respuesta in ['mantener', 'm', 'si', 's', 'yes', 'y', '']:
+            if respuesta is None:
+                # Timeout - seleccionar automáticamente el modo automático
+                print("⏰ Timeout alcanzado - Seleccionando MODO AUTOMÁTICO por defecto")
                 print("✅ Modo AUTOMÁTICO activado - El bot optimizará todo por ti")
                 return self.configurar_modo_automatico()
-            elif respuesta in ['cambiar', 'c', 'no', 'n']:
+            
+            respuesta = respuesta.strip()
+            
+            if respuesta in ['1', '']:
+                print("✅ Modo AUTOMÁTICO activado - El bot optimizará todo por ti")
+                return self.configurar_modo_automatico()
+            elif respuesta in ['2']:
                 print("🎛️  Activando configuración manual...")
                 return self.configurar_modo_manual()
             else:
-                print("❌ Respuesta no válida. Usa 'mantener' o 'cambiar'")
+                print("❌ Opción no válida. Usa '1' para Automático o '2' para Manual")
+                print("⏰ Timeout de 10 segundos se reinicia...")
     
     def configurar_modo_automatico(self):
         """Configurar modo automático inteligente"""

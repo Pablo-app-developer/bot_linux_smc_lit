@@ -179,9 +179,11 @@ export PYTHONUNBUFFERED=1
 # Activar entorno virtual
 source {self.production_dir}/.venv/bin/activate
 
-# Ejecutar con respuesta automática
-echo "Iniciando Bot SMC-LIT v2.0 en modo automático..."
-echo "mantener" | python3 {self.production_dir}/main_advanced_with_indices.py
+# Ejecutar bot principal con respuesta automática
+result = subprocess.run(
+    f'cd {self.production_dir} && echo "1" | python3 {self.production_dir}/main_advanced_with_indices.py',
+    shell=True, capture_output=True, text=True
+)
 
 # Si falla, intentar con start_auto_mode.py
 if [ $? -ne 0 ]; then

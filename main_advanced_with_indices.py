@@ -17,11 +17,13 @@ import random
 try:
     from twitter_news_analyzer import AdvancedTwitterNewsAnalyzer, TwitterNewsAnalyzer
     from ml_trading_system import AdvancedMLTradingSystem
+    from economic_calendar_analyzer import EconomicCalendarAnalyzer
 except ImportError:
     print("⚠️  Analizadores avanzados no disponibles, usando modo simulado")
     AdvancedTwitterNewsAnalyzer = None
     TwitterNewsAnalyzer = None
     AdvancedMLTradingSystem = None
+    EconomicCalendarAnalyzer = None
 
 class AdvancedTradingBotWithIndices:
     def __init__(self):
@@ -33,7 +35,13 @@ class AdvancedTradingBotWithIndices:
         self.analysis_stats = {}
         self.twitter_analyzer = None
         self.ml_system = None
-        self.market_sentiment = {'twitter': 'neutral', 'technical': 'neutral', 'ml_prediction': 'neutral'}
+        self.economic_calendar = None
+        self.market_sentiment = {
+            'twitter': 'neutral', 
+            'technical': 'neutral', 
+            'ml_prediction': 'neutral',
+            'economic_calendar': 'neutral'
+        }
         
         # Símbolos disponibles (Forex + Índices)
         self.available_symbols = {
@@ -145,6 +153,55 @@ class AdvancedTradingBotWithIndices:
                 print(f"⚠️  Error en Twitter analyzer básico: {e}")
                 self.twitter_analyzer = None
         
+        # Inicializar analizador de calendario económico
+        if EconomicCalendarAnalyzer:
+            try:
+                self.economic_calendar = EconomicCalendarAnalyzer()
+                print("📅 Analizador de calendario económico inicializado")
+                
+                # Ejecutar análisis inicial del calendario
+                calendar_summary = self.economic_calendar.get_calendar_summary()
+                
+                # Extraer sentimiento del calendario
+                events = self.economic_calendar.get_upcoming_events()
+                signals = self.economic_calendar.generate_trading_signals(events)
+                self.market_sentiment['economic_calendar'] = signals['overall_sentiment']
+                
+                print(f"📊 Calendario económico: {signals['event_count']} eventos, {signals['high_impact_events']} alto impacto")
+                print(f"📈 Sentimiento calendario: {self.market_sentiment['economic_calendar'].upper()}")
+                
+                # Integrar con sistema ML si está disponible
+                if self.ml_system:
+                    try:
+                        # Combinar análisis de Twitter y calendario para ML
+                        combined_analysis = {
+                            'impacto': {
+                                'confianza_general': (twitter_analysis.get('impacto', {}).get('confianza_general', 0.5) + 
+                                                    signals['confidence']) / 2,
+                                'impacto_por_categoria': twitter_analysis.get('impacto', {}).get('impacto_por_categoria', {}),
+                                'calendar_signals': signals
+                            },
+                            'noticias': twitter_analysis.get('noticias', []) + [
+                                {
+                                    'engagement': 1000,
+                                    'ml_score': event['impact_score'],
+                                    'importance': event['impact'],
+                                    'text': f"{event['name']}: {event['description']}"
+                                } for event in events[:3]  # Top 3 eventos
+                            ]
+                        }
+                        
+                        features = self.ml_system.extract_market_features({}, combined_analysis)
+                        direction, confidence, analysis = self.ml_system.predict_market_direction(features)
+                        print(f"🧠 Predicción ML combinada (Twitter+Calendario): {direction} (Confianza: {confidence:.2f})")
+                        self.market_sentiment['ml_prediction'] = direction.lower()
+                    except Exception as e:
+                        print(f"⚠️  Error integrando ML con calendario: {e}")
+                        
+            except Exception as e:
+                print(f"⚠️  Error en calendario económico: {e}")
+                self.economic_calendar = None
+        
         # Análisis automático del mercado
         market_conditions = self.analizar_condiciones_mercado()
         
@@ -166,11 +223,14 @@ class AdvancedTradingBotWithIndices:
             'max_daily_trades': self.calcular_max_trades(market_conditions),
             'demo_mode': True,
             'twitter_analysis': True,
+            'economic_calendar': True,
             'indices_trading': True,
             'auto_optimize': True,
             'optimization_frequency_hours': 2,
             'market_conditions': market_conditions,
             'twitter_sentiment': self.market_sentiment['twitter'],
+            'calendar_sentiment': self.market_sentiment['economic_calendar'],
+            'ml_prediction': self.market_sentiment['ml_prediction'],
             
             # Credenciales MT5
             'mt5_login': '164675960',
@@ -321,6 +381,19 @@ class AdvancedTradingBotWithIndices:
             if 'SPX500' not in selected:
                 selected.append('SPX500')
         
+        # Sentimiento calendario económico también influye
+        if self.market_sentiment['economic_calendar'] == 'bullish':
+            if 'NAS100' not in selected:
+                selected.append('NAS100')
+            if 'SPX500' not in selected:
+                selected.append('SPX500')
+        elif self.market_sentiment['economic_calendar'] == 'bearish':
+            # En eventos bajistas, priorizar activos defensivos
+            if 'USDJPY' not in selected:
+                selected.append('USDJPY')
+            if 'USDCHF' not in selected and 'USDCHF' in self.available_symbols['forex']:
+                selected.append('USDCHF')
+        
         # Asegurar mínimo 3, máximo 6 activos
         if len(selected) < 3:
             selected.extend(['EURUSD', 'NAS100', 'SPX500'])
@@ -409,14 +482,21 @@ class AdvancedTradingBotWithIndices:
         print(f"💰 Riesgo por trade: {config['risk_per_trade']}%")
         print(f"📊 Max trades/día: {config['max_daily_trades']}")
         print(f"🐦 Análisis Twitter: {'Activado' if config['twitter_analysis'] else 'Desactivado'}")
+        print(f"📅 Calendario económico: {'Activado' if config.get('economic_calendar') else 'Desactivado'}")
         print(f"📈 Trading índices: {'Activado' if config['indices_trading'] else 'Desactivado'}")
         print(f"🤖 Auto-optimización: {'Cada 2h' if config['auto_optimize'] else 'Desactivada'}")
         
         if 'twitter_sentiment' in config:
             print(f"📰 Sentimiento Twitter: {config['twitter_sentiment'].upper()}")
         
+        if 'calendar_sentiment' in config:
+            print(f"📊 Sentimiento calendario: {config['calendar_sentiment'].upper()}")
+        
+        if 'ml_prediction' in config:
+            print(f"🧠 Predicción ML: {config['ml_prediction'].upper()}")
+        
         print("=" * 50)
-        print("🎯 CONFIGURACIÓN OPTIMIZADA AUTOMÁTICAMENTE")
+        print("🎯 CONFIGURACIÓN OPTIMIZADA AUTOMÁTICAMENTE - TWITTER + CALENDARIO + ML")
     
     def inicializar_mt5_connection(self, config):
         """Inicializar conexión MT5 con soporte para índices"""
@@ -615,12 +695,46 @@ class AdvancedTradingBotWithIndices:
         }
         return base_prices.get(symbol, 1.00000)
     
+    def actualizar_analisis_calendario(self):
+        """Actualizar análisis de calendario económico periódicamente"""
+        while self.running and self.economic_calendar:
+            try:
+                print("\n📅 Actualizando análisis de calendario económico...")
+                
+                # Obtener eventos próximos
+                events = self.economic_calendar.get_upcoming_events()
+                signals = self.economic_calendar.generate_trading_signals(events)
+                
+                old_sentiment = self.market_sentiment['economic_calendar']
+                new_sentiment = signals['overall_sentiment']
+                
+                if old_sentiment != new_sentiment:
+                    print(f"📊 Cambio de sentimiento calendario: {old_sentiment} → {new_sentiment}")
+                    self.market_sentiment['economic_calendar'] = new_sentiment
+                    
+                    # Si hay eventos de alto impacto en las próximas horas, mostrar alerta
+                    critical_events = [e for e in events if e['impact'] == 'high' and e.get('hours_until', 0) < 24]
+                    if critical_events:
+                        print("🚨 ALERTA: Eventos de alto impacto en las próximas 24h:")
+                        for event in critical_events[:3]:
+                            print(f"   📈 {event['name']} ({event['currency']}) en {event['hours_until']:.1f}h")
+                
+                # Actualizar cada 30 minutos (calendario menos frecuente que Twitter)
+                time.sleep(1800)
+                
+            except Exception as e:
+                print(f"❌ Error actualizando calendario: {e}")
+                time.sleep(600)  # Reintentar en 10 minutos
+    
     def actualizar_analisis_twitter(self):
         """Actualizar análisis de Twitter periódicamente"""
         while self.running and self.twitter_analyzer:
             try:
                 print("\n🐦 Actualizando análisis de Twitter...")
-                twitter_analysis = self.twitter_analyzer.ejecutar_analisis_completo()
+                if hasattr(self.twitter_analyzer, 'ejecutar_analisis_completo_avanzado'):
+                    twitter_analysis = self.twitter_analyzer.ejecutar_analisis_completo_avanzado()
+                else:
+                    twitter_analysis = self.twitter_analyzer.ejecutar_analisis_completo()
                 
                 if 'error' not in twitter_analysis:
                     old_sentiment = self.market_sentiment['twitter']
@@ -789,6 +903,7 @@ class AdvancedTradingBotWithIndices:
         print(f"⏱️  Timeframes: {', '.join(self.config['timeframes'])}")
         print(f"🤖 Modo: {self.config['mode'].upper()}")
         print(f"🐦 Twitter: {'Activado' if self.config.get('twitter_analysis') else 'Desactivado'}")
+        print(f"📅 Calendario: {'Activado' if self.config.get('economic_calendar') else 'Desactivado'}")
         print("=" * 60)
         
         self.running = True
@@ -801,6 +916,15 @@ class AdvancedTradingBotWithIndices:
             )
             twitter_thread.start()
             self.threads.append(twitter_thread)
+        
+        # Iniciar worker calendario económico si está habilitado
+        if self.config.get('economic_calendar') and self.economic_calendar:
+            calendar_thread = threading.Thread(
+                target=self.actualizar_analisis_calendario,
+                daemon=True
+            )
+            calendar_thread.start()
+            self.threads.append(calendar_thread)
         
         # Crear workers para cada combinación
         for symbol in self.config['symbols']:

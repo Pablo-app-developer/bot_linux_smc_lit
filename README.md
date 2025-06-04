@@ -123,12 +123,28 @@ sudo systemctl status smc-lit-bot
 
 ### **🤖 MODO AUTOMÁTICO (RECOMENDADO)**
 
-El bot se auto-configura completamente:
+El bot se auto-configura completamente sin intervención:
 
 ```python
 # Ejecutar con configuración automática
 python3 inicio_bot_avanzado.py
-# Responder: "mantener" para modo automático
+# O ejecutar directamente:
+python3 main_advanced_with_indices.py
+```
+
+**🔥 NUEVA FUNCIONALIDAD:**
+- **Timeout Automático:** 10 segundos sin respuesta = modo automático
+- **Opciones Numéricas:** Solo presiona `1` o `2`
+- **Sin Intervención:** Perfecto para VPS y servidores
+
+**Configuración Interactiva:**
+```
+🎯 SELECCIONA MODO DE OPERACIÓN:
+  1️⃣  AUTOMÁTICO (Recomendado) - Sin intervención
+  2️⃣  MANUAL - Configuración personalizada
+
+⏰ El sistema elegirá AUTOMÁTICO en 10 segundos si no hay respuesta...
+Elige opción (1=Automático, 2=Manual): [timeout 10s]
 ```
 
 **Auto-configuración incluye:**
@@ -136,6 +152,7 @@ python3 inicio_bot_avanzado.py
 - ✅ Timeframes óptimos por sesión de trading
 - ✅ Gestión de riesgo adaptativa (0.5%-3%)
 - ✅ Parámetros de ML optimizados
+- ✅ **Timeout automático para VPS**
 
 ### **🎛️ CONFIGURACIÓN MANUAL**
 

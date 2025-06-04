@@ -1,5 +1,0 @@
-flask>=2.3.0
-plotly>=5.17.0
-pandas>=1.5.3
-requests>=2.31.0
-sqlite3 

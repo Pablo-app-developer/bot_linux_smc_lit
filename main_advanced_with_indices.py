@@ -15,10 +15,13 @@ from datetime import datetime, timedelta
 import random
 
 try:
-    from twitter_news_analyzer import TwitterNewsAnalyzer
+    from twitter_news_analyzer import AdvancedTwitterNewsAnalyzer, TwitterNewsAnalyzer
+    from ml_trading_system import AdvancedMLTradingSystem
 except ImportError:
-    print("⚠️  Twitter analyzer no disponible, usando modo simulado")
+    print("⚠️  Analizadores avanzados no disponibles, usando modo simulado")
+    AdvancedTwitterNewsAnalyzer = None
     TwitterNewsAnalyzer = None
+    AdvancedMLTradingSystem = None
 
 class AdvancedTradingBotWithIndices:
     def __init__(self):
@@ -29,7 +32,8 @@ class AdvancedTradingBotWithIndices:
         self.threads = []
         self.analysis_stats = {}
         self.twitter_analyzer = None
-        self.market_sentiment = {'twitter': 'neutral', 'technical': 'neutral'}
+        self.ml_system = None
+        self.market_sentiment = {'twitter': 'neutral', 'technical': 'neutral', 'ml_prediction': 'neutral'}
         
         # Símbolos disponibles (Forex + Índices)
         self.available_symbols = {
@@ -90,19 +94,55 @@ class AdvancedTradingBotWithIndices:
         print("\n🤖 CONFIGURANDO MODO AUTOMÁTICO INTELIGENTE...")
         print("=" * 55)
         
-        # Inicializar analizador de Twitter
-        if TwitterNewsAnalyzer:
+        # Inicializar sistema ML
+        if AdvancedMLTradingSystem:
+            try:
+                self.ml_system = AdvancedMLTradingSystem()
+                self.ml_system.load_model('data/ml_model.json')
+                print("🧠 Sistema ML inicializado y cargado")
+            except Exception as e:
+                print(f"⚠️  Error en sistema ML: {e}")
+                self.ml_system = None
+        
+        # Inicializar analizador de Twitter avanzado
+        if AdvancedTwitterNewsAnalyzer:
+            try:
+                self.twitter_analyzer = AdvancedTwitterNewsAnalyzer()
+                print("🐦 Analizador de Twitter avanzado inicializado")
+                
+                # Ejecutar análisis inicial expandido
+                twitter_analysis = self.twitter_analyzer.ejecutar_analisis_completo_avanzado()
+                if 'error' not in twitter_analysis:
+                    self.market_sentiment['twitter'] = twitter_analysis['impacto']['sentimiento_general']
+                    self.market_sentiment['ml_prediction'] = twitter_analysis['impacto'].get('ml_prediction', 'neutral')
+                    print(f"📰 Sentimiento Twitter: {self.market_sentiment['twitter'].upper()}")
+                    print(f"🤖 Predicción ML: {self.market_sentiment['ml_prediction'].upper()}")
+                    
+                    # Integrar con sistema ML si está disponible
+                    if self.ml_system:
+                        try:
+                            features = self.ml_system.extract_market_features({}, twitter_analysis)
+                            direction, confidence, analysis = self.ml_system.predict_market_direction(features)
+                            print(f"🎯 Predicción ML integrada: {direction} (Confianza: {confidence:.2f})")
+                            self.market_sentiment['ml_prediction'] = direction.lower()
+                        except Exception as e:
+                            print(f"⚠️  Error integrando ML: {e}")
+                            
+            except Exception as e:
+                print(f"⚠️  Error en Twitter analyzer: {e}")
+                self.twitter_analyzer = None
+        elif TwitterNewsAnalyzer:
+            # Fallback al analizador básico
             try:
                 self.twitter_analyzer = TwitterNewsAnalyzer()
-                print("🐦 Analizador de Twitter inicializado")
+                print("🐦 Analizador de Twitter básico inicializado")
                 
-                # Ejecutar análisis inicial
                 twitter_analysis = self.twitter_analyzer.ejecutar_analisis_completo()
                 if 'error' not in twitter_analysis:
                     self.market_sentiment['twitter'] = twitter_analysis['impacto']['sentimiento_general']
                     print(f"📰 Sentimiento Twitter: {self.market_sentiment['twitter'].upper()}")
             except Exception as e:
-                print(f"⚠️  Error en Twitter analyzer: {e}")
+                print(f"⚠️  Error en Twitter analyzer básico: {e}")
                 self.twitter_analyzer = None
         
         # Análisis automático del mercado
@@ -692,16 +732,33 @@ class AdvancedTradingBotWithIndices:
         print('\n🛑 Deteniendo sistema avanzado...')
         self.running = False
         
+        # Crear directorio data si no existe
+        os.makedirs('data', exist_ok=True)
+        
         # Guardar estadísticas finales
-        with open('advanced_stats_with_indices.json', 'w') as f:
+        with open('data/advanced_stats_with_indices.json', 'w') as f:
             json.dump({
                 'stats': self.analysis_stats,
                 'config': self.config,
                 'market_sentiment': self.market_sentiment,
-                'stopped_at': datetime.now().isoformat()
+                'stopped_at': datetime.now().isoformat(),
+                'version': 'advanced_ml_v2.0'
             }, f, indent=2)
         
-        print("💾 Estadísticas guardadas")
+        # Guardar modelo ML si está disponible
+        if self.ml_system:
+            try:
+                self.ml_system.save_model('data/ml_model.json')
+                
+                # Obtener insights del ML
+                insights = self.ml_system.get_ml_insights()
+                with open('data/ml_insights.json', 'w') as f:
+                    json.dump(insights, f, indent=2, default=str)
+                print("🧠 Modelo ML y insights guardados")
+            except Exception as e:
+                print(f"⚠️  Error guardando ML: {e}")
+        
+        print("💾 Estadísticas guardadas en data/")
         sys.exit(0)
     
     def main(self):
@@ -716,7 +773,8 @@ class AdvancedTradingBotWithIndices:
         self.config = self.preguntar_modo_operacion()
         
         # Guardar configuración
-        with open('config_advanced_indices.json', 'w') as f:
+        os.makedirs('data', exist_ok=True)
+        with open('data/config_advanced_indices.json', 'w') as f:
             json.dump(self.config, f, indent=2)
         
         # Inicializar MT5

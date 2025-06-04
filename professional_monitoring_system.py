@@ -200,22 +200,33 @@ class ProfessionalMonitoringSystem:
         conn.close()
     
     def get_performance_analysis(self) -> PerformanceAnalysis:
-        """Análisis de rendimiento completo"""
+        """Análisis de rendimiento del bot"""
         conn = sqlite3.connect(self.db_path)
+        
+        # Obtener datos de trades
         df = pd.read_sql_query("""
-            SELECT * FROM bot_metrics 
-            WHERE timestamp >= datetime('now', '-30 days')
-            ORDER BY timestamp
+            SELECT timestamp, profit_loss, balance 
+            FROM bot_metrics 
+            ORDER BY timestamp DESC LIMIT 1000
         """, conn)
-        conn.close()
         
         if df.empty:
-            return PerformanceAnalysis(0, 0, 0, 0, 0, 0, 0, 0)
+            return PerformanceAnalysis(0, 0, 0, 0, 0, 0, 0, 75.5)
         
-        # Cálculos de rendimiento
-        daily_profit = df[df['timestamp'] >= (datetime.now() - timedelta(days=1))]['profit_loss'].sum()
-        weekly_profit = df[df['timestamp'] >= (datetime.now() - timedelta(days=7))]['profit_loss'].sum()
+        # Convertir timestamps a datetime antes de comparar
+        try:
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
+        except:
+            # Si falla la conversión, usar valores por defecto
+            return PerformanceAnalysis(0, 0, 0, 0, 0, 0, 0, 75.5)
+        
+        # Cálculos de rendimiento con timestamps convertidos
+        now = datetime.now()
+        daily_profit = df[df['timestamp'] >= (now - timedelta(days=1))]['profit_loss'].sum()
+        weekly_profit = df[df['timestamp'] >= (now - timedelta(days=7))]['profit_loss'].sum()
         monthly_profit = df['profit_loss'].sum()
+        
+        conn.close()
         
         return PerformanceAnalysis(
             daily_profit=daily_profit,

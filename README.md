@@ -224,7 +224,7 @@ python3 bayesian_optimizer.py
 
 ### **Backtesting Profesional**
 
-```bash
+   ```bash
 # Backtest completo
 python3 professional_backtest.py
 
@@ -233,7 +233,7 @@ python3 realistic_backtest.py
 
 # Backtest rápido
 python3 quick_backtest.py
-```
+   ```
 
 ### **Métricas Calculadas:**
 - Win Rate, Profit Factor
@@ -248,7 +248,7 @@ python3 quick_backtest.py
 
 ### **Sistema Automático:**
 
-```bash
+   ```bash
 # Crear nueva versión
 python3 version_management_system.py
 

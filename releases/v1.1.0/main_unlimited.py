@@ -44,13 +44,20 @@ def main():
     # Importar y configurar el sistema de trading
     try:
         from src.mt5_simulator import MT5Simulator
-        from src.strategy import SMCStrategy
+        from src.strategy import AdvancedSMCStrategy
         
         # Inicializar simulador
-        simulator = MT5Simulator()
+        simulator = MT5Simulator(
+            initial_balance=1000.0,
+            unlimited_mode=True
+        )
         
         # Configurar estrategia agresiva
-        # strategy = SMCStrategy(df)  # Comentamos temporalmente hasta tener datos
+        strategy = AdvancedSMCStrategy(
+            risk_percent=UNLIMITED_CONFIG['risk_per_trade'],
+            aggressive_mode=True,
+            scalping_mode=True
+        )
         
         print("✅ Componentes inicializados")
         print("🎯 COMENZANDO OPERACIONES...")

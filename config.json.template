@@ -1,0 +1,27 @@
+{
+  "vps_credentials": {
+    "host": "YOUR_VPS_IP_HERE",
+    "user": "YOUR_USERNAME_HERE", 
+    "password": "YOUR_PASSWORD_HERE",
+    "port": 22
+  },
+  "mt5_credentials": {
+    "login": "YOUR_MT5_LOGIN_HERE",
+    "password": "YOUR_MT5_PASSWORD_HERE",
+    "server": "YOUR_MT5_SERVER_HERE"
+  },
+  "bot_settings": {
+    "demo_balance": 1000.0,
+    "max_risk_per_trade": 0.02,
+    "monitoring_interval": 30,
+    "dashboard_port": 5000
+  },
+  "notifications": {
+    "telegram_bot_token": "YOUR_TELEGRAM_TOKEN_HERE",
+    "telegram_chat_id": "YOUR_CHAT_ID_HERE",
+    "email_smtp_server": "smtp.gmail.com",
+    "email_port": 587,
+    "email_user": "your_email@gmail.com",
+    "email_password": "your_email_password"
+  }
+} 

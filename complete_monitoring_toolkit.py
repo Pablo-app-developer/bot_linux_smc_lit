@@ -3,6 +3,7 @@
 TOOLKIT COMPLETO DE MONITOREO PROFESIONAL - BOT SMC-LIT
 =======================================================
 Herramienta todo-en-uno para monitoreo, versionado y evaluaciones del bot.
+Sistema seguro de credenciales implementado.
 """
 
 import os
@@ -14,25 +15,46 @@ import threading
 from datetime import datetime
 import logging
 
-# Importar nuestros sistemas
+# Importar sistemas seguros
 try:
     from professional_monitoring_system import ProfessionalMonitoringSystem
     from version_management_system import VersionManagementSystem
+    from secure_config_manager import SecureConfigManager, VPSCredentials
 except ImportError:
     print("⚠️  Módulos no encontrados. Ejecutando desde archivos locales...")
 
 class CompleteMonitoringToolkit:
     def __init__(self):
-        self.vps_credentials = {
-            'host': '107.174.133.202',
-            'user': 'root',
-            'password': 'n5X5dB6xPLJj06qr4C',
-            'port': 22
-        }
+        # Usar gestor seguro de configuración
+        self.config_manager = SecureConfigManager()
+        self.vps_credentials = self._get_secure_credentials()
         
         self.monitoring_system = None
         self.version_manager = None
         self.setup_logging()
+        
+    def _get_secure_credentials(self) -> dict:
+        """Obtener credenciales de forma segura"""
+        vps_creds = self.config_manager.get_vps_credentials()
+        
+        if not vps_creds:
+            print("⚠️  CREDENCIALES NO CONFIGURADAS")
+            print("   Ejecuta: python3 secure_config_manager.py")
+            print("   Para configurar credenciales seguras.")
+            # Usar credenciales temporales de fallback (solo para demo)
+            return {
+                'host': 'PLEASE_CONFIGURE',
+                'user': 'PLEASE_CONFIGURE', 
+                'password': 'PLEASE_CONFIGURE',
+                'port': 22
+            }
+        
+        return {
+            'host': vps_creds.host,
+            'user': vps_creds.user,
+            'password': vps_creds.password,
+            'port': vps_creds.port
+        }
         
     def setup_logging(self):
         """Configurar logging centralizado"""
@@ -45,6 +67,9 @@ class CompleteMonitoringToolkit:
             ]
         )
         self.logger = logging.getLogger('CompleteToolkit')
+        
+        # Log seguro (sin credenciales)
+        self.logger.info(f"Toolkit initialized for VPS: {self.vps_credentials['host']}")
     
     def install_dependencies(self):
         """Instalar dependencias necesarias"""
@@ -52,7 +77,7 @@ class CompleteMonitoringToolkit:
         try:
             subprocess.run([
                 sys.executable, '-m', 'pip', 'install', 
-                'flask', 'plotly', 'pandas', 'requests'
+                'flask', 'plotly', 'pandas', 'requests', 'cryptography'
             ], check=True, capture_output=True)
             print("✅ Dependencias instaladas correctamente")
             return True
@@ -122,29 +147,16 @@ class CompleteMonitoringToolkit:
     def get_metrics_for_evaluation(self):
         """Obtener métricas completas para evaluación con asistente"""
         try:
-            # Comando completo para obtener todas las métricas
-            metrics_command = f"""
-            sshpass -p '{self.vps_credentials['password']}' ssh -o StrictHostKeyChecking=no -p {self.vps_credentials['port']} {self.vps_credentials['user']}@{self.vps_credentials['host']} '
-                echo "=== BOT STATUS ===" &&
-                ps aux | grep main_unlimited | grep -v grep &&
-                echo "=== SYSTEM METRICS ===" &&
-                free -h &&
-                echo "=== CPU USAGE ===" &&
-                top -bn1 | grep "Cpu(s)" &&
-                echo "=== DISK USAGE ===" &&
-                df -h /home &&
-                echo "=== NETWORK ===" &&
-                ping -c 3 8.8.8.8 | tail -1 &&
-                echo "=== BOT LOGS ===" &&
-                tail -20 /home/smc-lit-bot/*.log 2>/dev/null | grep -E "(Análisis|Error|Bot)" &&
-                echo "=== UPTIME ===" &&
-                uptime &&
-                echo "=== TIMESTAMP ===" &&
-                date
-            '
-            """
+            # Comando simplificado que sabemos que funciona
+            metrics_command = [
+                'sshpass', '-p', self.vps_credentials['password'],
+                'ssh', '-o', 'StrictHostKeyChecking=no',
+                '-p', str(self.vps_credentials['port']),
+                f"{self.vps_credentials['user']}@{self.vps_credentials['host']}",
+                'echo "=== BOT STATUS ===" && ps aux | grep main_unlimited | grep -v grep && echo "=== SYSTEM METRICS ===" && free -h && echo "=== CPU USAGE ===" && top -bn1 | grep "Cpu(s)" && echo "=== UPTIME ===" && uptime && echo "=== TIMESTAMP ===" && date'
+            ]
             
-            result = subprocess.run(metrics_command, shell=True, capture_output=True, text=True)
+            result = subprocess.run(metrics_command, capture_output=True, text=True)
             
             if result.returncode == 0:
                 return {

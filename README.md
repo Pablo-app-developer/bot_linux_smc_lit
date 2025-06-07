@@ -176,9 +176,9 @@ config = {
 TWITTER_BEARER_TOKEN="tu_token_aqui"
 
 # MetaTrader5 (Demo account incluida)
-MT5_LOGIN=164675960
+MT5_LOGIN=5036791117
 MT5_SERVER="MetaQuotes-Demo"
-MT5_PASSWORD="Chevex9292!"
+MT5_PASSWORD="BtUvF-X8"
 ```
 
 ---
@@ -408,7 +408,7 @@ GET /api/v1/analysis/realtime
 
 ### **🔍 DIAGNÓSTICO AUTOMÁTICO**
 
-```bash
+   ```bash
 # Verificación completa del sistema
 python3 verificar_bot_funcionando.py
 
@@ -425,7 +425,7 @@ python3 verificar_bot_funcionando.py
 
 ### **🔄 ACTUALIZACIONES**
 
-```bash
+   ```bash
 # Actualizar desde repositorio
 cd /opt/bot_smc_lit_v2
 git pull origin main

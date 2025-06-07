@@ -39,7 +39,7 @@ class MT5Trader:
                  symbol="EURUSD",
                  timeframe="M5",
                  risk_percent=1.0,
-                 max_trades=5,
+                 max_trades=999,
                  update_interval=60,
                  use_ai=True,
                  use_trailing=True):
@@ -223,7 +223,7 @@ class MT5Trader:
         
         # Verificar límite de operaciones simultáneas
         open_positions = self.connector.get_open_positions(self.symbol)
-        if len(open_positions) >= self.max_trades:
+        if len(open_positions) >= 999:  # Prácticamente ilimitado
             logger.info(f"Límite de operaciones alcanzado ({self.max_trades})")
             return
         

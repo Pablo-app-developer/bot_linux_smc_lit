@@ -279,8 +279,8 @@ class AdvancedTradingBotWithIndices:
             'symbols': selected_symbols,
             'timeframes': selected_timeframes,
             'risk_per_trade': optimal_risk,
-            'max_daily_trades': self.calcular_max_trades(market_conditions),
-            'demo_mode': True,
+            'max_daily_trades': 999999,  # Operaciones ilimitadas
+            'demo_mode': False,
             'twitter_analysis': True,
             'economic_calendar': True,
             'indices_trading': True,
@@ -292,9 +292,9 @@ class AdvancedTradingBotWithIndices:
             'ml_prediction': self.market_sentiment['ml_prediction'],
             
             # Credenciales MT5
-            'mt5_login': '164675960',
-            'mt5_server': 'MetaQuotes-Demo',
-            'mt5_password': 'Chevex9292!',
+            'mt5_login': 'usa los mismos de la demo, la pasé a cuenta real',
+            'mt5_server': 'h',
+            'mt5_password': 'h',
             
             # Parámetros técnicos adaptativos
             'stop_loss_pips': 20 if market_conditions['volatility'] > 0.6 else 30,
@@ -354,15 +354,15 @@ class AdvancedTradingBotWithIndices:
             'timeframes': timeframes,
             'risk_per_trade': risk,
             'max_daily_trades': 50,
-            'demo_mode': True,
+            'demo_mode': False,
             'twitter_analysis': False,
             'indices_trading': True,
             'auto_optimize': False,
             
             # Credenciales MT5
-            'mt5_login': '164675960',
-            'mt5_server': 'MetaQuotes-Demo',
-            'mt5_password': 'Chevex9292!',
+            'mt5_login': 'usa los mismos de la demo, la pasé a cuenta real',
+            'mt5_server': 'h',
+            'mt5_password': 'h',
             
             'version': 'manual_with_indices',
             'created': datetime.now().isoformat()
